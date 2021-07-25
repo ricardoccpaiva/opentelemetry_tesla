@@ -1,5 +1,7 @@
 # OpentelemetryTesla
 
+[![Build Status](https://github.com/ricardoccpaiva/opentelemetry_tesla/actions/workflows/elixir.yml/badge.svg)](https://github.com/ricardoccpaiva/opentelemetry_tesla/actions)
+
 Telemetry handler that creates OpenTelemetry spans from Tesla HTTP client events.
 
 It attaches to the following events: 
