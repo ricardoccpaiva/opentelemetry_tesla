@@ -43,25 +43,37 @@ defmodule OpentelemetryTesla do
   end
 
   defp handle_stop(_event, %{duration: measurement}, metadata, _config) do
-    headers_span_args =
-      metadata
-      |> Map.get(:env)
-      |> Map.get(:headers)
-      |> Enum.map(fn {key, value} -> {:"http.headers.#{key}", value} end)
-
     span_args =
-      metadata
-      |> Map.get(:env)
-      |> Map.take([:method, :opts, :query, :status, :url])
-      |> Enum.map(fn {key, value} -> {:"http.#{key}", value} end)
+      headers_span_args(metadata) ++ span_args(metadata) ++ [measurement: measurement / 1_000_000]
 
     ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, %{})
 
-    OpenTelemetry.Span.set_attributes(
-      ctx,
-      span_args ++ headers_span_args ++ [measurement: measurement / 1_000_000]
-    )
+    OpenTelemetry.Span.set_attributes(ctx, span_args)
 
     OpentelemetryTelemetry.end_telemetry_span(@tracer_id, %{})
+  end
+
+  defp headers_span_args(metadata) do
+    case Map.get(metadata, :env) do
+      nil ->
+        []
+
+      map ->
+        map
+        |> Map.get(:headers)
+        |> Enum.map(fn {key, value} -> {:"http.headers.#{key}", value} end)
+    end
+  end
+
+  defp span_args(metadata) do
+    case Map.get(metadata, :env) do
+      nil ->
+        []
+
+      map ->
+        map
+        |> Map.take([:method, :opts, :query, :status, :url])
+        |> Enum.map(fn {key, value} -> {:"http.#{key}", value} end)
+    end
   end
 end
