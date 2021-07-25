@@ -1,6 +1,22 @@
 # OpentelemetryTesla
 
-**TODO: Add description**
+Telemetry handler that creates OpenTelemetry spans from Tesla HTTP client events.
+
+It attaches to the following events: 
+  - `[:tesla, :request, :start]` - emitted at the beginning of the request.
+      * Measurement: `%{system_time: System.system_time()}`
+      * Metadata: `%{env: Tesla.Env.t()}`
+  - `[:tesla, :request, :stop]` - emitted at the end of the request.
+      * Measurement: `%{duration: native_time}`
+      * Metadata: `%{env: Tesla.Env.t()} | %{env: Tesla.Env.t(), error: term()}`
+  - `[:tesla, :request, :exception]` - emitted when an exception has been raised.
+      * Measurement: `%{duration: native_time}`
+      * Metadata: `%{kind: Exception.kind(), reason: term(), stacktrace: Exception.stacktrace()}`
+
+OpenTelemetry span is enriched with the following attributes that are parsed from Tesla `stop` event.
+ - `[:method, :opts, :query, :status, :url]`
+ - `:headers`, it creates one attribute per item in the headers list
+ - `measurement` corresponds to the duration of the request
 
 ## Installation
 
@@ -14,8 +30,3 @@ def deps do
   ]
 end
 ```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/opentelemetry_tesla](https://hexdocs.pm/opentelemetry_tesla).
-
