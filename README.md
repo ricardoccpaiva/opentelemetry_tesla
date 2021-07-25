@@ -1,4 +1,4 @@
-# OpentelemetryTesla
+# OpenTelemetryTesla
 
 [![Build Status](https://github.com/ricardoccpaiva/opentelemetry_tesla/actions/workflows/elixir.yml/badge.svg)](https://github.com/ricardoccpaiva/opentelemetry_tesla/actions)
 
