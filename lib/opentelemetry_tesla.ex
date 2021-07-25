@@ -44,7 +44,9 @@ defmodule OpentelemetryTesla do
 
   defp handle_stop(_event, %{duration: measurement}, metadata, _config) do
     span_args =
-      headers_span_args(metadata) ++ span_args(metadata) ++ [measurement: measurement / 1_000_000]
+      headers_span_args(metadata) ++
+        span_args(metadata) ++
+        [{"http.request.measurement", measurement}]
 
     ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, %{})
 
@@ -61,7 +63,7 @@ defmodule OpentelemetryTesla do
       map ->
         map
         |> Map.get(:headers)
-        |> Enum.map(fn {key, value} -> {:"http.headers.#{key}", value} end)
+        |> Enum.map(fn {key, value} -> {"http.headers.#{key}", value} end)
     end
   end
 
@@ -73,7 +75,7 @@ defmodule OpentelemetryTesla do
       map ->
         map
         |> Map.take([:method, :opts, :query, :status, :url])
-        |> Enum.map(fn {key, value} -> {:"http.#{key}", value} end)
+        |> Enum.map(fn {key, value} -> {"http.#{key}", value} end)
     end
   end
 end

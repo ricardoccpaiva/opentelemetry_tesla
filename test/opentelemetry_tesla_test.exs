@@ -29,7 +29,7 @@ defmodule OpentelemetryTeslaTest do
     assert_receive {:span,
                     span(
                       name: "External HTTP Request",
-                      attributes: [{:measurement, 0.001}]
+                      attributes: [{"http.request.measurement", 1000}]
                     )}
   end
 
@@ -64,12 +64,12 @@ defmodule OpentelemetryTeslaTest do
                     span(
                       name: "External HTTP Request",
                       attributes: [
-                        {:"http.method", :get},
-                        {:"http.opts", []},
-                        {:"http.query", []},
-                        {:"http.status", nil},
-                        {:"http.url", "http://end_of_the_inter.net"},
-                        {:measurement, 0.001}
+                        {"http.method", :get},
+                        {"http.opts", []},
+                        {"http.query", []},
+                        {"http.status", nil},
+                        {"http.url", "http://end_of_the_inter.net"},
+                        {"http.request.measurement", 1000}
                       ]
                     )}
   end
