@@ -8,12 +8,18 @@ defmodule OpentelemetryTesla.MixProject do
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      package: package()
+      package: package(),
+      description: description()
     ]
+  end
+
+  defp description() do
+    "Telemetry handler that creates OpenTelemetry spans from Tesla HTTP client events."
   end
 
   defp package do
     [
+      name: "OpentelemetryTesla",
       maintainers: ["Ricardo Paiva"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/ricardoccpaiva/opentelemetry_tesla"}
