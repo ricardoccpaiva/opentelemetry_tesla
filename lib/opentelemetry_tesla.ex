@@ -15,7 +15,7 @@ defmodule OpentelemetryTesla do
     :ok
   end
 
-  def attach_request_start_handler() do
+  defp attach_request_start_handler() do
     :telemetry.attach(
       "#{__MODULE__}.request_start",
       [:tesla, :request, :start],
@@ -24,7 +24,7 @@ defmodule OpentelemetryTesla do
     )
   end
 
-  def attach_request_stop_handler() do
+  defp attach_request_stop_handler() do
     :telemetry.attach(
       "#{__MODULE__}.request_stop",
       [:tesla, :request, :stop],
@@ -44,9 +44,10 @@ defmodule OpentelemetryTesla do
 
   defp handle_stop(_event, %{duration: measurement}, metadata, _config) do
     span_args =
-      headers_span_args(metadata) ++
-        span_args(metadata) ++
-        [{"http.request.measurement", measurement}]
+      metadata
+      |> headers_span_args()
+      |> :lists.append(span_args(metadata))
+      |> :lists.append([{"http.request.measurement", measurement}])
 
     ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, %{})
 
