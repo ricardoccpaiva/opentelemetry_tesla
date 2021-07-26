@@ -28,7 +28,7 @@ by adding `opentelemetry_tesla` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:opentelemetry_tesla, "~> 0.1.0"}
+    {:opentelemetry_tesla, "~> 0.1.0-rc.1"}
   ]
 end
 ```

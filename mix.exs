@@ -4,12 +4,20 @@ defmodule OpentelemetryTesla.MixProject do
   def project do
     [
       app: :opentelemetry_tesla,
-      version: "0.1.0",
+      version: "0.1.0-rc.1",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      description: description()
+      description: description(),
+      docs: docs()
+    ]
+  end
+
+  defp docs() do
+    [
+      main: "readme",
+      extras: ["README.md"]
     ]
   end
 
@@ -19,7 +27,7 @@ defmodule OpentelemetryTesla.MixProject do
 
   defp package do
     [
-      name: "OpentelemetryTesla",
+      name: "opentelemetry_tesla",
       maintainers: ["Ricardo Paiva"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/ricardoccpaiva/opentelemetry_tesla"}
@@ -39,7 +47,8 @@ defmodule OpentelemetryTesla.MixProject do
       {:telemetry, "~> 0.4"},
       {:opentelemetry, "~> 1.0.0-rc.2"},
       {:opentelemetry_telemetry, "~> 1.0.0-beta.2"},
-      {:tesla, "~> 1.4"}
+      {:tesla, "~> 1.4"},
+      {:ex_doc, "~> 0.24", only: :dev, runtime: false}
     ]
   end
 end
