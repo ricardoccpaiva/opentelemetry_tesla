@@ -1,4 +1,21 @@
 defmodule OpentelemetryTesla do
+  @moduledoc """
+  OpentelemetryTesla uses [telemetry](https://hexdocs.pm/telemetry/) handlers to create `OpenTelemetry` spans from Tesla HTTP client events.
+  Supported events include request start/stop and also when an exception is raised.
+  ## Usage
+  In your application start:
+      def start(_type, _args) do
+        OpenTelemetry.register_application_tracer(:my_telemetry_api)
+        OpentelemetryTesla.setup()
+        children = [
+          {Phoenix.PubSub, name: MyApp.PubSub},
+          MyAppWeb.Endpoint
+        ]
+        opts = [strategy: :one_for_one, name: MyApp.Supervisor]
+        Supervisor.start_link(children, opts)
+      end
+  """
+
   @tracer_id :opentelemetry_tesla
 
   @doc """
