@@ -32,3 +32,20 @@ def deps do
   ]
 end
 ```
+
+## Setup
+In your application start:
+```elixir
+def start(_type, _args) do
+  OpenTelemetry.register_application_tracer(:my_telemetry_api)
+  OpentelemetryTesla.setup()
+  children = [
+    {Phoenix.PubSub, name: MyApp.PubSub},
+    MyAppWeb.Endpoint
+  ]
+  opts = [strategy: :one_for_one, name: MyApp.Supervisor]
+  Supervisor.start_link(children, opts)
+end
+```
+
+After this, spans will start to be created whenever a request is completed or if it eventually fails with an exception.
