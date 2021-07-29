@@ -87,7 +87,7 @@ defmodule OpentelemetryTesla do
   defp handle_exception(
          _event,
          %{duration: native_time},
-         %{kind: kind, reason: reason, stacktrace: stacktrace} = meta,
+         %{kind: kind, reason: reason, stacktrace: stacktrace},
          _config
        ) do
     ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, %{})
