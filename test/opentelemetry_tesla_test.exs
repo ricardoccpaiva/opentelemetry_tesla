@@ -6,6 +6,10 @@ defmodule OpentelemetryTeslaTest do
     Record.defrecord(name, spec)
   end
 
+  for {name, spec} <- Record.extract_all(from_lib: "opentelemetry_api/include/opentelemetry.hrl") do
+    Record.defrecord(name, spec)
+  end
+
   setup do
     :otel_batch_processor.set_exporter(:otel_exporter_pid, self())
 
@@ -71,6 +75,53 @@ defmodule OpentelemetryTeslaTest do
                         {"http.url", "http://end_of_the_inter.net"},
                         {"http.request.measurement", 1000}
                       ]
+                    )}
+  end
+
+  test "Records Spans for exceptions" do
+    exception = %{
+      kind: :error,
+      reason: :timeout_value,
+      stacktrace: [
+        {:timer, :sleep, 1, [file: 'timer.erl', line: 152]},
+        {Tesla.Adapter.Httpc, :call, 2, [file: 'lib/tesla/adapter/httpc.ex', line: 20]},
+        {Tesla.Middleware.Telemetry, :call, 3,
+         [file: 'lib/tesla/middleware/telemetry.ex', line: 97]}
+      ]
+    }
+
+    :telemetry.execute(
+      [:tesla, :request, :start],
+      %{},
+      %{}
+    )
+
+    :telemetry.execute(
+      [:tesla, :request, :exception],
+      %{duration: 10},
+      exception
+    )
+
+    expected_status = OpenTelemetry.status(:error, "")
+
+    assert_receive {:span,
+                    span(
+                      name: "External HTTP Request",
+                      attributes: list,
+                      kind: :server,
+                      events: [
+                        event(
+                          name: "exception",
+                          attributes: [
+                            {"exception.type", "Elixir.ErlangError"},
+                            {"exception.message", "Erlang error: :timeout_value"},
+                            {"exception.stacktrace",
+                             "    (stdlib 3.14) timer.erl:152: :timer.sleep/1\n    (tesla 1.4.2) lib/tesla/adapter/httpc.ex:20: Tesla.Adapter.Httpc.call/2\n    (tesla 1.4.2) lib/tesla/middleware/telemetry.ex:97: Tesla.Middleware.Telemetry.call/3\n"},
+                            {:duration, 10}
+                          ]
+                        )
+                      ],
+                      status: ^expected_status
                     )}
   end
 end

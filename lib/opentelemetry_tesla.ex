@@ -1,4 +1,6 @@
 defmodule OpentelemetryTesla do
+  alias OpenTelemetry.Span
+
   @moduledoc """
   OpentelemetryTesla uses [telemetry](https://hexdocs.pm/telemetry/) handlers to create `OpenTelemetry` spans from Tesla HTTP client events.
   Supported events include request start/stop and also when an exception is raised.
@@ -28,7 +30,7 @@ defmodule OpentelemetryTesla do
 
     attach_request_start_handler()
     attach_request_stop_handler()
-    # attach_request_exception_handler()
+    attach_request_exception_handler()
     :ok
   end
 
@@ -46,6 +48,15 @@ defmodule OpentelemetryTesla do
       "#{__MODULE__}.request_stop",
       [:tesla, :request, :stop],
       &handle_stop/4,
+      %{}
+    )
+  end
+
+  defp attach_request_exception_handler() do
+    :telemetry.attach(
+      "#{__MODULE__}.request_exception",
+      [:tesla, :request, :exception],
+      &handle_exception/4,
       %{}
     )
   end
@@ -70,6 +81,21 @@ defmodule OpentelemetryTesla do
 
     OpenTelemetry.Span.set_attributes(ctx, span_args)
 
+    OpentelemetryTelemetry.end_telemetry_span(@tracer_id, %{})
+  end
+
+  defp handle_exception(
+         _event,
+         %{duration: native_time},
+         %{kind: kind, reason: reason, stacktrace: stacktrace} = meta,
+         _config
+       ) do
+    ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, %{})
+
+    exception = Exception.normalize(kind, reason, stacktrace)
+
+    Span.record_exception(ctx, exception, stacktrace, duration: native_time)
+    Span.set_status(ctx, OpenTelemetry.status(:error, ""))
     OpentelemetryTelemetry.end_telemetry_span(@tracer_id, %{})
   end
 
