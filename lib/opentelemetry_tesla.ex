@@ -61,65 +61,71 @@ defmodule OpentelemetryTesla do
     )
   end
 
-  defp handle_start(_event, _measurements, _metadata, _config) do
+  defp handle_start(_event, _measurements, %{env: %Tesla.Env{method: method}} = metadata, _config) do
+    http_method = http_method(method)
+
     OpentelemetryTelemetry.start_telemetry_span(
       @tracer_id,
-      "External HTTP Request",
-      %{},
-      %{kind: :server}
+      "HTTP #{http_method}",
+      metadata,
+      %{kind: :client}
     )
   end
 
-  defp handle_stop(_event, %{duration: measurement}, metadata, _config) do
-    span_args =
-      metadata
-      |> headers_span_args()
-      |> :lists.append(span_args(metadata))
-      |> :lists.append([{"http.request.measurement", measurement}])
+  defp handle_stop(_event, _measurements, metadata, _config) do
+    span_attrs = build_attrs(metadata)
+    ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, metadata)
 
-    ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, %{})
+    OpenTelemetry.Span.set_attributes(ctx, span_attrs)
 
-    OpenTelemetry.Span.set_attributes(ctx, span_args)
-
-    OpentelemetryTelemetry.end_telemetry_span(@tracer_id, %{})
+    OpentelemetryTelemetry.end_telemetry_span(@tracer_id, metadata)
   end
 
   defp handle_exception(
          _event,
          %{duration: native_time},
-         %{kind: kind, reason: reason, stacktrace: stacktrace},
+         %{kind: kind, reason: reason, stacktrace: stacktrace} = metadata,
          _config
        ) do
-    ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, %{})
+    ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, metadata)
 
     exception = Exception.normalize(kind, reason, stacktrace)
 
     Span.record_exception(ctx, exception, stacktrace, duration: native_time)
     Span.set_status(ctx, OpenTelemetry.status(:error, ""))
-    OpentelemetryTelemetry.end_telemetry_span(@tracer_id, %{})
+    OpentelemetryTelemetry.end_telemetry_span(@tracer_id, metadata)
   end
 
-  defp headers_span_args(metadata) do
-    case Map.get(metadata, :env) do
-      nil ->
-        []
+  defp build_attrs(%{
+         env: %Tesla.Env{method: method, url: url, status: status_code, headers: headers}
+       }) do
+    uri = URI.parse(url)
 
-      map ->
-        map
-        |> Map.get(:headers)
-        |> Enum.map(fn {key, value} -> {"http.headers.#{key}", value} end)
+    attrs = [
+      "http.method": http_method(method),
+      "http.url": url,
+      "http.target": uri.path,
+      "http.host": uri.host,
+      "http.scheme": uri.scheme,
+      "http.status_code": status_code
+    ]
+
+    maybe_append_content_length(attrs, headers)
+  end
+
+  defp maybe_append_content_length(attrs, headers) do
+    case Enum.find(headers, fn {k, _v} -> k == "code" end) do
+      nil ->
+        attrs
+
+      {_key, content_length} ->
+        :lists.append(attrs, "http.response_content_length": content_length)
     end
   end
 
-  defp span_args(metadata) do
-    case Map.get(metadata, :env) do
-      nil ->
-        []
-
-      map ->
-        map
-        |> Map.take([:method, :opts, :query, :status, :url])
-        |> Enum.map(fn {key, value} -> {"http.#{key}", value} end)
-    end
+  defp http_method(method) do
+    method
+    |> Atom.to_string()
+    |> String.upcase()
   end
 end
