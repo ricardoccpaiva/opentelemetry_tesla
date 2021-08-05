@@ -20,8 +20,7 @@ defmodule OpentelemetryTeslaTest do
   test "Records Spans for Tesla HTTP client with metadata" do
     tesla_env = %{
       env: %Tesla.Env{
-        __client__: %Tesla.Client{adapter: nil, fun: nil, post: [], pre: []},
-        __module__: __MODULE__,
+        __module__: Tesla,
         body: nil,
         headers: [],
         method: :get,
@@ -51,7 +50,8 @@ defmodule OpentelemetryTeslaTest do
                         "http.method": "GET",
                         "http.url": "http://end_of_the_inter.net",
                         "http.target": nil,
-                        "http.host": "end_of_the_inter.net",
+                        "net.peer.name": "end_of_the_inter.net",
+                        "net.peer.port": 80,
                         "http.scheme": "http",
                         "http.status_code": nil
                       ]
@@ -109,9 +109,8 @@ defmodule OpentelemetryTeslaTest do
                           attributes: [
                             {"exception.type", "Elixir.ErlangError"},
                             {"exception.message", "Erlang error: :timeout_value"},
-                            {"exception.stacktrace",
-                             "    (stdlib 3.14) timer.erl:152: :timer.sleep/1\n    (tesla 1.4.2) lib/tesla/adapter/httpc.ex:20: Tesla.Adapter.Httpc.call/2\n    (tesla 1.4.2) lib/tesla/middleware/telemetry.ex:97: Tesla.Middleware.Telemetry.call/3\n"},
-                            {:duration, 10}
+                            {"exception.stacktrace", _stacktrace}
+                            | %{}
                           ]
                         )
                       ],

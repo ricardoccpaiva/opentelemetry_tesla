@@ -83,7 +83,7 @@ defmodule OpentelemetryTesla do
 
   defp handle_exception(
          _event,
-         %{duration: native_time},
+         _measurements,
          %{kind: kind, reason: reason, stacktrace: stacktrace} = metadata,
          _config
        ) do
@@ -91,26 +91,45 @@ defmodule OpentelemetryTesla do
 
     exception = Exception.normalize(kind, reason, stacktrace)
 
-    Span.record_exception(ctx, exception, stacktrace, duration: native_time)
+    Span.record_exception(ctx, exception, stacktrace, %{})
     Span.set_status(ctx, OpenTelemetry.status(:error, ""))
     OpentelemetryTelemetry.end_telemetry_span(@tracer_id, metadata)
   end
 
   defp build_attrs(%{
-         env: %Tesla.Env{method: method, url: url, status: status_code, headers: headers}
+         env: %Tesla.Env{
+           method: method,
+           url: url,
+           status: status_code,
+           headers: headers,
+           query: query
+         }
        }) do
-    uri = URI.parse(url)
+    uri =
+      query
+      |> Enum.into(%{})
+      |> URI.encode_query()
+      |> build_full_uri(url)
 
     attrs = [
       "http.method": http_method(method),
-      "http.url": url,
+      "http.url": URI.to_string(uri),
       "http.target": uri.path,
-      "http.host": uri.host,
+      "net.peer.name": uri.host,
+      "net.peer.port": uri.port,
       "http.scheme": uri.scheme,
       "http.status_code": status_code
     ]
 
     maybe_append_content_length(attrs, headers)
+  end
+
+  defp build_full_uri("", url) do
+    URI.parse(url)
+  end
+
+  defp build_full_uri(query_string, url) do
+    URI.parse("#{url}?#{query_string}")
   end
 
   defp maybe_append_content_length(attrs, headers) do
