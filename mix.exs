@@ -48,7 +48,8 @@ defmodule OpentelemetryTesla.MixProject do
       {:opentelemetry, "~> 1.0.0-rc.2"},
       {:opentelemetry_telemetry, "~> 1.0.0-beta.2"},
       {:tesla, "~> 1.4"},
-      {:ex_doc, "~> 0.24", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.24", only: :dev, runtime: false},
+      {:bypass, "~> 2.1", only: :test}
     ]
   end
 end

@@ -133,7 +133,7 @@ defmodule OpentelemetryTesla do
   end
 
   defp maybe_append_content_length(attrs, headers) do
-    case Enum.find(headers, fn {k, _v} -> k == "code" end) do
+    case Enum.find(headers, fn {k, _v} -> k == "content-length" end) do
       nil ->
         attrs
 

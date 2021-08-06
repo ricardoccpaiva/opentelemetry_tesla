@@ -11,54 +11,158 @@ defmodule OpentelemetryTeslaTest do
   end
 
   setup do
+    bypass = Bypass.open()
+
     :otel_batch_processor.set_exporter(:otel_exporter_pid, self())
 
     OpentelemetryTesla.setup()
-    :ok
+
+    {:ok, bypass: bypass}
   end
 
-  test "Records Spans for Tesla HTTP client with metadata" do
-    tesla_env = %{
-      env: %Tesla.Env{
-        __module__: Tesla,
-        body: nil,
-        headers: [],
-        method: :get,
-        opts: [],
-        query: [],
-        status: nil,
-        url: "http://end_of_the_inter.net"
-      }
-    }
+  test "Records spans for Tesla HTTP client", %{bypass: bypass} do
+    defmodule TestClient do
+      def get(client) do
+        Tesla.get(client, "/users/")
+      end
 
-    :telemetry.execute(
-      [:tesla, :request, :start],
-      %{},
-      tesla_env
-    )
+      def client(url) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.Telemetry
+        ]
 
-    :telemetry.execute(
-      [:tesla, :request, :stop],
-      %{duration: 1000},
-      tesla_env
-    )
+        Tesla.client(middleware)
+      end
+    end
+
+    Bypass.expect_once(bypass, "GET", "/users", fn conn ->
+      Plug.Conn.resp(conn, 204, "")
+    end)
+
+    client = TestClient.client(endpoint_url(bypass.port))
+
+    TestClient.get(client)
 
     assert_receive {:span,
                     span(
                       name: "HTTP GET",
                       attributes: [
                         "http.method": "GET",
-                        "http.url": "http://end_of_the_inter.net",
-                        "http.target": nil,
-                        "net.peer.name": "end_of_the_inter.net",
-                        "net.peer.port": 80,
+                        "http.url": url,
+                        "http.target": "/users/",
+                        "net.peer.name": "localhost",
+                        "net.peer.port": port,
                         "http.scheme": "http",
-                        "http.status_code": nil
+                        "http.status_code": 204
                       ]
                     )}
+
+    assert url == "http://localhost:#{bypass.port}/users/"
+    assert port == bypass.port
   end
 
-  test "Records Spans for exceptions" do
+  test "Appends query string parameters to http.url attribute", %{bypass: bypass} do
+    defmodule TestClient do
+      def get(client, id) do
+        params = [id: id]
+        Tesla.get(client, "/users/:id", opts: [path_params: params])
+      end
+
+      def client(url, token) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.Telemetry,
+          Tesla.Middleware.PathParams,
+          {Tesla.Middleware.Query, [token: "some-token"]}
+        ]
+
+        Tesla.client(middleware)
+      end
+    end
+
+    Bypass.expect_once(bypass, "GET", "/users/2", fn conn ->
+      Plug.Conn.resp(conn, 204, "")
+    end)
+
+    client = TestClient.client(endpoint_url(bypass.port), "badjoras")
+
+    TestClient.get(client, "2")
+
+    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
+
+    assert attributes[:"http.url"] ==
+             "http://localhost:#{bypass.port}/users/2?token=some-token"
+  end
+
+  test "Handles url path arguments correctly", %{bypass: bypass} do
+    defmodule TestClient do
+      def get(client, id) do
+        params = [id: id]
+        Tesla.get(client, "/users/:id", opts: [path_params: params])
+      end
+
+      def client(url) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.Telemetry,
+          Tesla.Middleware.PathParams,
+          {Tesla.Middleware.Query, [token: "some-token"]}
+        ]
+
+        Tesla.client(middleware)
+      end
+    end
+
+    Bypass.expect_once(bypass, "GET", "/users/2", fn conn ->
+      Plug.Conn.resp(conn, 204, "")
+    end)
+
+    client = TestClient.client(endpoint_url(bypass.port))
+
+    TestClient.get(client, "2")
+
+    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
+
+    assert attributes[:"http.target"] == "/users/2"
+  end
+
+  test "Records http.response_content_length param into the span", %{bypass: bypass} do
+    defmodule TestClient do
+      def get(client, id) do
+        params = [id: id]
+        Tesla.get(client, "/users/:id", opts: [path_params: params])
+      end
+
+      def client(url) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.Telemetry,
+          Tesla.Middleware.PathParams,
+          {Tesla.Middleware.Query, [token: "some-token"]}
+        ]
+
+        Tesla.client(middleware)
+      end
+    end
+
+    response = "HELLO 👋"
+
+    Bypass.expect_once(bypass, "GET", "/users/2", fn conn ->
+      Plug.Conn.resp(conn, 200, response)
+    end)
+
+    client = TestClient.client(endpoint_url(bypass.port))
+
+    TestClient.get(client, "2")
+
+    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
+
+    {response_size, _} = Integer.parse(attributes[:"http.response_content_length"])
+    assert response_size == byte_size(response)
+  end
+
+  test "Records spans for exceptions" do
     tesla_env = %{
       env: %Tesla.Env{
         __client__: %Tesla.Client{adapter: nil, fun: nil, post: [], pre: []},
@@ -117,4 +221,6 @@ defmodule OpentelemetryTeslaTest do
                       status: ^expected_status
                     )}
   end
+
+  defp endpoint_url(port), do: "http://localhost:#{port}/"
 end
