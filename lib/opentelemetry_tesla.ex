@@ -115,8 +115,7 @@ defmodule OpentelemetryTesla do
       "http.method": http_method(method),
       "http.url": URI.to_string(uri),
       "http.target": uri.path,
-      "net.peer.name": uri.host,
-      "net.peer.port": uri.port,
+      "http.host": uri.host,
       "http.scheme": uri.scheme,
       "http.status_code": status_code
     ]

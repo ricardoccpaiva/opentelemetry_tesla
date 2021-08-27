@@ -51,15 +51,13 @@ defmodule OpentelemetryTeslaTest do
                         "http.method": "GET",
                         "http.url": url,
                         "http.target": "/users/",
-                        "net.peer.name": "localhost",
-                        "net.peer.port": port,
+                        "http.host": "localhost",
                         "http.scheme": "http",
                         "http.status_code": 204
                       ]
                     )}
 
     assert url == "http://localhost:#{bypass.port}/users/"
-    assert port == bypass.port
   end
 
   test "Appends query string parameters to http.url attribute", %{bypass: bypass} do
@@ -69,7 +67,7 @@ defmodule OpentelemetryTeslaTest do
         Tesla.get(client, "/users/:id", opts: [path_params: params])
       end
 
-      def client(url, token) do
+      def client(url) do
         middleware = [
           {Tesla.Middleware.BaseUrl, url},
           Tesla.Middleware.Telemetry,
@@ -85,7 +83,7 @@ defmodule OpentelemetryTeslaTest do
       Plug.Conn.resp(conn, 204, "")
     end)
 
-    client = TestClient.client(endpoint_url(bypass.port), "badjoras")
+    client = TestClient.client(endpoint_url(bypass.port))
 
     TestClient.get(client, "2")
 
@@ -93,6 +91,39 @@ defmodule OpentelemetryTeslaTest do
 
     assert attributes[:"http.url"] ==
              "http://localhost:#{bypass.port}/users/2?token=some-token"
+  end
+
+  test "http.url attribute is correct when request doesn't contain query string parameters", %{bypass: bypass} do
+    defmodule TestClient do
+      def get(client, id) do
+        params = [id: id]
+        Tesla.get(client, "/users/:id", opts: [path_params: params])
+      end
+
+      def client(url) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.Telemetry,
+          Tesla.Middleware.PathParams,
+          {Tesla.Middleware.Query, []}
+        ]
+
+        Tesla.client(middleware)
+      end
+    end
+
+    Bypass.expect_once(bypass, "GET", "/users/2", fn conn ->
+      Plug.Conn.resp(conn, 204, "")
+    end)
+
+    client = TestClient.client(endpoint_url(bypass.port))
+
+    TestClient.get(client, "2")
+
+    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
+
+    assert attributes[:"http.url"] ==
+             "http://localhost:#{bypass.port}/users/2"
   end
 
   test "Handles url path arguments correctly", %{bypass: bypass} do
