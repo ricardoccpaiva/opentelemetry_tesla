@@ -60,6 +60,60 @@ defmodule OpentelemetryTeslaTest do
     assert url == "http://localhost:#{bypass.port}/users/"
   end
 
+  test "Marks Span status as :error when HTTP request fails", %{bypass: bypass} do
+    defmodule TestClient do
+      def get(client) do
+        Tesla.get(client, "/users/")
+      end
+
+      def client(url) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.Telemetry
+        ]
+
+        Tesla.client(middleware)
+      end
+    end
+
+    Bypass.expect_once(bypass, "GET", "/users", fn conn ->
+      Plug.Conn.resp(conn, 500, "")
+    end)
+
+    client = TestClient.client(endpoint_url(bypass.port))
+
+    TestClient.get(client)
+
+    assert_receive {:span, span(status: {:status, :error, ""})}
+  end
+
+  test "Marks Span status as :ok when HTTP request succeeds", %{bypass: bypass} do
+    defmodule TestClient do
+      def get(client) do
+        Tesla.get(client, "/users/")
+      end
+
+      def client(url) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.Telemetry
+        ]
+
+        Tesla.client(middleware)
+      end
+    end
+
+    Bypass.expect_once(bypass, "GET", "/users", fn conn ->
+      Plug.Conn.resp(conn, 200, "")
+    end)
+
+    client = TestClient.client(endpoint_url(bypass.port))
+
+    TestClient.get(client)
+
+    assert_receive {:span, span(status: {:status, :ok, ""})}
+  end
+
   test "Appends query string parameters to http.url attribute", %{bypass: bypass} do
     defmodule TestClient do
       def get(client, id) do
@@ -93,7 +147,9 @@ defmodule OpentelemetryTeslaTest do
              "http://localhost:#{bypass.port}/users/2?token=some-token"
   end
 
-  test "http.url attribute is correct when request doesn't contain query string parameters", %{bypass: bypass} do
+  test "http.url attribute is correct when request doesn't contain query string parameters", %{
+    bypass: bypass
+  } do
     defmodule TestClient do
       def get(client, id) do
         params = [id: id]

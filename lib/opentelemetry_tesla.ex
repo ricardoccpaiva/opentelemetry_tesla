@@ -73,10 +73,18 @@ defmodule OpentelemetryTesla do
   end
 
   defp handle_stop(_event, _measurements, metadata, _config) do
+    %{env: %Tesla.Env{status: status_code}} = metadata
+
     span_attrs = build_attrs(metadata)
     ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, metadata)
 
     OpenTelemetry.Span.set_attributes(ctx, span_attrs)
+
+    if status_code >= 400 do
+      Span.set_status(ctx, OpenTelemetry.status(:error, ""))
+    else
+      Span.set_status(ctx, OpenTelemetry.status(:ok, ""))
+    end
 
     OpentelemetryTelemetry.end_telemetry_span(@tracer_id, metadata)
   end
