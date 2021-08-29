@@ -87,33 +87,6 @@ defmodule OpentelemetryTeslaTest do
     assert_receive {:span, span(status: {:status, :error, ""})}
   end
 
-  test "Marks Span status as :ok when HTTP request succeeds", %{bypass: bypass} do
-    defmodule TestClient do
-      def get(client) do
-        Tesla.get(client, "/users/")
-      end
-
-      def client(url) do
-        middleware = [
-          {Tesla.Middleware.BaseUrl, url},
-          Tesla.Middleware.Telemetry
-        ]
-
-        Tesla.client(middleware)
-      end
-    end
-
-    Bypass.expect_once(bypass, "GET", "/users", fn conn ->
-      Plug.Conn.resp(conn, 200, "")
-    end)
-
-    client = TestClient.client(endpoint_url(bypass.port))
-
-    TestClient.get(client)
-
-    assert_receive {:span, span(status: {:status, :ok, ""})}
-  end
-
   test "Appends query string parameters to http.url attribute", %{bypass: bypass} do
     defmodule TestClient do
       def get(client, id) do

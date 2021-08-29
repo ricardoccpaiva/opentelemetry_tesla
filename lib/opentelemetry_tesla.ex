@@ -82,8 +82,6 @@ defmodule OpentelemetryTesla do
 
     if status_code >= 400 do
       Span.set_status(ctx, OpenTelemetry.status(:error, ""))
-    else
-      Span.set_status(ctx, OpenTelemetry.status(:ok, ""))
     end
 
     OpentelemetryTelemetry.end_telemetry_span(@tracer_id, metadata)
