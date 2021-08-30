@@ -72,15 +72,31 @@ defmodule OpentelemetryTesla do
     )
   end
 
-  defp handle_stop(_event, _measurements, metadata, _config) do
-    %{env: %Tesla.Env{status: status_code}} = metadata
+  defp handle_stop(_event, _measurements, %{env: %Tesla.Env{status: status}} = metadata, _config)
+       when status > 400 do
+    end_span(metadata, :error)
+  end
 
+  defp handle_stop(
+         _event,
+         _measurements,
+         %{env: _env, error: {Tesla.Middleware.FollowRedirects, :too_many_redirects}} = metadata,
+         _config
+       ) do
+    end_span(metadata, :error)
+  end
+
+  defp handle_stop(_event, _measurements, metadata, _config) do
+    end_span(metadata)
+  end
+
+  defp end_span(metadata, status \\ :ok) do
     span_attrs = build_attrs(metadata)
     ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, metadata)
 
     OpenTelemetry.Span.set_attributes(ctx, span_attrs)
 
-    if status_code >= 400 do
+    if status == :error do
       Span.set_status(ctx, OpenTelemetry.status(:error, ""))
     end
 
