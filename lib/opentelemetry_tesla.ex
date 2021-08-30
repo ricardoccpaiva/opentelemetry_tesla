@@ -61,65 +61,111 @@ defmodule OpentelemetryTesla do
     )
   end
 
-  defp handle_start(_event, _measurements, _metadata, _config) do
+  defp handle_start(_event, _measurements, %{env: %Tesla.Env{method: method}} = metadata, _config) do
+    http_method = http_method(method)
+
     OpentelemetryTelemetry.start_telemetry_span(
       @tracer_id,
-      "External HTTP Request",
-      %{},
-      %{kind: :server}
+      "HTTP #{http_method}",
+      metadata,
+      %{kind: :client}
     )
   end
 
-  defp handle_stop(_event, %{duration: measurement}, metadata, _config) do
-    span_args =
-      metadata
-      |> headers_span_args()
-      |> :lists.append(span_args(metadata))
-      |> :lists.append([{"http.request.measurement", measurement}])
+  defp handle_stop(_event, _measurements, %{env: %Tesla.Env{status: status}} = metadata, _config)
+       when status > 400 do
+    end_span(metadata, :error)
+  end
 
-    ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, %{})
+  defp handle_stop(
+         _event,
+         _measurements,
+         %{env: _env, error: {Tesla.Middleware.FollowRedirects, :too_many_redirects}} = metadata,
+         _config
+       ) do
+    end_span(metadata, :error)
+  end
 
-    OpenTelemetry.Span.set_attributes(ctx, span_args)
+  defp handle_stop(_event, _measurements, metadata, _config) do
+    end_span(metadata)
+  end
 
-    OpentelemetryTelemetry.end_telemetry_span(@tracer_id, %{})
+  defp end_span(metadata, status \\ :ok) do
+    span_attrs = build_attrs(metadata)
+    ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, metadata)
+
+    OpenTelemetry.Span.set_attributes(ctx, span_attrs)
+
+    if status == :error do
+      Span.set_status(ctx, OpenTelemetry.status(:error, ""))
+    end
+
+    OpentelemetryTelemetry.end_telemetry_span(@tracer_id, metadata)
   end
 
   defp handle_exception(
          _event,
-         %{duration: native_time},
-         %{kind: kind, reason: reason, stacktrace: stacktrace},
+         _measurements,
+         %{kind: kind, reason: reason, stacktrace: stacktrace} = metadata,
          _config
        ) do
-    ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, %{})
+    ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, metadata)
 
     exception = Exception.normalize(kind, reason, stacktrace)
 
-    Span.record_exception(ctx, exception, stacktrace, duration: native_time)
+    Span.record_exception(ctx, exception, stacktrace, %{})
     Span.set_status(ctx, OpenTelemetry.status(:error, ""))
-    OpentelemetryTelemetry.end_telemetry_span(@tracer_id, %{})
+    OpentelemetryTelemetry.end_telemetry_span(@tracer_id, metadata)
   end
 
-  defp headers_span_args(metadata) do
-    case Map.get(metadata, :env) do
-      nil ->
-        []
+  defp build_attrs(%{
+         env: %Tesla.Env{
+           method: method,
+           url: url,
+           status: status_code,
+           headers: headers,
+           query: query
+         }
+       }) do
+    uri =
+      query
+      |> Enum.into(%{})
+      |> URI.encode_query()
+      |> build_full_uri(url)
 
-      map ->
-        map
-        |> Map.get(:headers)
-        |> Enum.map(fn {key, value} -> {"http.headers.#{key}", value} end)
+    attrs = [
+      "http.method": http_method(method),
+      "http.url": URI.to_string(uri),
+      "http.target": uri.path,
+      "http.host": uri.host,
+      "http.scheme": uri.scheme,
+      "http.status_code": status_code
+    ]
+
+    maybe_append_content_length(attrs, headers)
+  end
+
+  defp build_full_uri("", url) do
+    URI.parse(url)
+  end
+
+  defp build_full_uri(query_string, url) do
+    URI.parse("#{url}?#{query_string}")
+  end
+
+  defp maybe_append_content_length(attrs, headers) do
+    case Enum.find(headers, fn {k, _v} -> k == "content-length" end) do
+      nil ->
+        attrs
+
+      {_key, content_length} ->
+        :lists.append(attrs, "http.response_content_length": content_length)
     end
   end
 
-  defp span_args(metadata) do
-    case Map.get(metadata, :env) do
-      nil ->
-        []
-
-      map ->
-        map
-        |> Map.take([:method, :opts, :query, :status, :url])
-        |> Enum.map(fn {key, value} -> {"http.#{key}", value} end)
-    end
+  defp http_method(method) do
+    method
+    |> Atom.to_string()
+    |> String.upcase()
   end
 end
