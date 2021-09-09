@@ -2,9 +2,12 @@
 
 [![Build Status](https://github.com/ricardoccpaiva/opentelemetry_tesla/actions/workflows/elixir.yml/badge.svg)](https://github.com/ricardoccpaiva/opentelemetry_tesla/actions)
 
-Telemetry handler that creates OpenTelemetry spans from Tesla HTTP client events.
+This library is divided into two components:
+  - Tesla middleware that injects tracing headers into HTTP requests
 
-It attaches to the following events: 
+  - Telemetry handler that creates OpenTelemetry spans from Tesla HTTP client events
+
+The handler implementation attaches to the following events: 
   - `[:tesla, :request, :start]` - emitted at the beginning of the request.
       * Measurement: `%{system_time: System.system_time()}`
       * Metadata: `%{env: Tesla.Env.t()}`
@@ -15,11 +18,6 @@ It attaches to the following events:
       * Measurement: `%{duration: native_time}`
       * Metadata: `%{kind: Exception.kind(), reason: term(), stacktrace: Exception.stacktrace()}`
 
-OpenTelemetry span is enriched with the following attributes that are parsed from Tesla `stop` event.
- - `[:method, :opts, :query, :status, :url]`
- - `:headers`, it creates one attribute per item in the headers list
- - `measurement` corresponds to the duration of the request
-
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
@@ -28,24 +26,19 @@ by adding `opentelemetry_tesla` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:opentelemetry_tesla, "~> 0.1.0-rc.1"}
+    {:opentelemetry_tesla, "~> 1.1.0-rc.1"}
   ]
 end
 ```
 
 ## Setup
-In your application start:
+If you want to use Telemetry handler, make sure you add the following lines to your application start:
 ```elixir
-def start(_type, _args) do
-  OpenTelemetry.register_application_tracer(:my_telemetry_api)
-  OpentelemetryTesla.setup()
-  children = [
-    {Phoenix.PubSub, name: MyApp.PubSub},
-    MyAppWeb.Endpoint
-  ]
-  opts = [strategy: :one_for_one, name: MyApp.Supervisor]
-  Supervisor.start_link(children, opts)
-end
+OpenTelemetry.register_application_tracer(:my_telemetry_api)
+OpentelemetryTesla.setup()
 ```
 
-After this, spans will start to be created whenever a request is completed or if it eventually fails with an exception.
+To propagate tracing information you'll also have to add the tesla middleware.
+```elixir
+plug Tesla.Middleware.OpenTelemetry
+```
