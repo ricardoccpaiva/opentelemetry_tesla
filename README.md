@@ -38,7 +38,18 @@ OpenTelemetry.register_application_tracer(:my_telemetry_api)
 OpentelemetryTesla.setup()
 ```
 
+For this :point_up: to work you also have to add the following line to your Tesla middlewares:
+```elixir
+Tesla.Middleware.Telemetry
+```
+
 To propagate tracing information you'll also have to add the tesla middleware.
 ```elixir
 plug Tesla.Middleware.OpenTelemetry
+```
+
+**It's very important that you set the correct order of the middlewares, otherwise span relations will not be correctly set.**
+```elixir
+Tesla.Middleware.Telemetry
+Tesla.Middleware.OpenTelemetry
 ```
