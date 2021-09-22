@@ -38,7 +38,7 @@ defmodule OpentelemetryTesla do
     :telemetry.attach(
       "#{__MODULE__}.request_start",
       [:tesla, :request, :start],
-      &handle_start/4,
+      &__MODULE__.handle_start/4,
       %{}
     )
   end
@@ -47,7 +47,7 @@ defmodule OpentelemetryTesla do
     :telemetry.attach(
       "#{__MODULE__}.request_stop",
       [:tesla, :request, :stop],
-      &handle_stop/4,
+      &__MODULE__.handle_stop/4,
       %{}
     )
   end
@@ -56,12 +56,12 @@ defmodule OpentelemetryTesla do
     :telemetry.attach(
       "#{__MODULE__}.request_exception",
       [:tesla, :request, :exception],
-      &handle_exception/4,
+      &__MODULE__.handle_exception/4,
       %{}
     )
   end
 
-  defp handle_start(_event, _measurements, %{env: %Tesla.Env{method: method}} = metadata, _config) do
+  def handle_start(_event, _measurements, %{env: %Tesla.Env{method: method}} = metadata, _config) do
     http_method = http_method(method)
 
     OpentelemetryTelemetry.start_telemetry_span(
@@ -72,12 +72,12 @@ defmodule OpentelemetryTesla do
     )
   end
 
-  defp handle_stop(_event, _measurements, %{env: %Tesla.Env{status: status}} = metadata, _config)
+  def handle_stop(_event, _measurements, %{env: %Tesla.Env{status: status}} = metadata, _config)
        when status > 400 do
     end_span(metadata, :error)
   end
 
-  defp handle_stop(
+  def handle_stop(
          _event,
          _measurements,
          %{env: _env, error: {Tesla.Middleware.FollowRedirects, :too_many_redirects}} = metadata,
@@ -86,7 +86,7 @@ defmodule OpentelemetryTesla do
     end_span(metadata, :error)
   end
 
-  defp handle_stop(_event, _measurements, metadata, _config) do
+  def handle_stop(_event, _measurements, metadata, _config) do
     end_span(metadata)
   end
 
@@ -103,7 +103,7 @@ defmodule OpentelemetryTesla do
     OpentelemetryTelemetry.end_telemetry_span(@tracer_id, metadata)
   end
 
-  defp handle_exception(
+  def handle_exception(
          _event,
          _measurements,
          %{kind: kind, reason: reason, stacktrace: stacktrace} = metadata,
