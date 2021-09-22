@@ -44,7 +44,7 @@ defmodule OpentelemetryTesla.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:telemetry, "~> 0.4"},
+      {:telemetry, "~> 0.4 or ~> 1.0"},
       {:opentelemetry, "~> 1.0.0-rc.2", only: :test},
       {:opentelemetry_api, "~> 1.0.0-rc.2"},
       {:opentelemetry_telemetry, "~> 1.0.0-beta.2"},
