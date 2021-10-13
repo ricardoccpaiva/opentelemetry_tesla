@@ -3,7 +3,7 @@ defmodule Tesla.Middleware.OpenTelemetry do
 
   def call(env, next, _options) do
     env
-    |> Tesla.put_headers(:otel_propagator.text_map_inject([]))
+    |> Tesla.put_headers(:otel_propagator_text_map.inject([]))
     |> Tesla.run(next)
   end
 end
