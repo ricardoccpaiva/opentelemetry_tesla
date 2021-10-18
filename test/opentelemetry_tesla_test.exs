@@ -13,7 +13,12 @@ defmodule OpentelemetryTeslaTest do
   setup do
     bypass = Bypass.open()
 
-    :otel_batch_processor.set_exporter(:otel_exporter_pid, self())
+    :application.stop(:opentelemetry)
+    :application.set_env(:opentelemetry, :tracer, :otel_tracer_default)
+    :application.set_env(:opentelemetry, :processors, [
+      {:otel_batch_processor, %{scheduled_delay_ms: 1, exporter: {:otel_exporter_pid, self()}}}
+    ])
+    :application.start(:opentelemetry)
 
     OpentelemetryTesla.setup()
 
