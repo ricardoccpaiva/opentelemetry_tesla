@@ -140,7 +140,7 @@ defmodule OpentelemetryTeslaTest do
           {Tesla.Middleware.BaseUrl, url},
           Tesla.Middleware.Telemetry,
           Tesla.Middleware.PathParams,
-          {Tesla.Middleware.Query, [token: "some-token"]}
+          {Tesla.Middleware.Query, [token: "some-token", array: ["foo", "bar"]]}
         ]
 
         Tesla.client(middleware)
@@ -158,7 +158,7 @@ defmodule OpentelemetryTeslaTest do
     assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
 
     assert attributes[:"http.url"] ==
-             "http://localhost:#{bypass.port}/users/2?token=some-token"
+             "http://localhost:#{bypass.port}/users/2?token=some-token&array%5B%5D=foo&array%5B%5D=bar"
   end
 
   test "http.url attribute is correct when request doesn't contain query string parameters", %{

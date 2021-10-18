@@ -127,15 +127,12 @@ defmodule OpentelemetryTesla do
            query: query
          }
        }) do
-    uri =
-      query
-      |> Enum.into(%{})
-      |> URI.encode_query()
-      |> build_full_uri(url)
+    url = Tesla.build_url(url, query)
+    uri = URI.parse(url)
 
     attrs = [
       "http.method": http_method(method),
-      "http.url": URI.to_string(uri),
+      "http.url": url,
       "http.target": uri.path,
       "http.host": uri.host,
       "http.scheme": uri.scheme,
@@ -143,14 +140,6 @@ defmodule OpentelemetryTesla do
     ]
 
     maybe_append_content_length(attrs, headers)
-  end
-
-  defp build_full_uri("", url) do
-    URI.parse(url)
-  end
-
-  defp build_full_uri(query_string, url) do
-    URI.parse("#{url}?#{query_string}")
   end
 
   defp maybe_append_content_length(attrs, headers) do
