@@ -15,7 +15,7 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
                 {"traceparent", traceparent}
               ]
             }} =
-              Tesla.Middleware.OpenTelemetry.call(
+             Tesla.Middleware.OpenTelemetry.call(
                %Tesla.Env{url: ""},
                [],
                "http://example.com"

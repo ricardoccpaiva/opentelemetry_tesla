@@ -73,16 +73,16 @@ defmodule OpentelemetryTesla do
   end
 
   def handle_stop(_event, _measurements, %{env: %Tesla.Env{status: status}} = metadata, _config)
-       when status > 400 do
+      when status > 400 do
     end_span(metadata, :error)
   end
 
   def handle_stop(
-         _event,
-         _measurements,
-         %{env: _env, error: {Tesla.Middleware.FollowRedirects, :too_many_redirects}} = metadata,
-         _config
-       ) do
+        _event,
+        _measurements,
+        %{env: _env, error: {Tesla.Middleware.FollowRedirects, :too_many_redirects}} = metadata,
+        _config
+      ) do
     end_span(metadata, :error)
   end
 
@@ -104,11 +104,11 @@ defmodule OpentelemetryTesla do
   end
 
   def handle_exception(
-         _event,
-         _measurements,
-         %{kind: kind, reason: reason, stacktrace: stacktrace} = metadata,
-         _config
-       ) do
+        _event,
+        _measurements,
+        %{kind: kind, reason: reason, stacktrace: stacktrace} = metadata,
+        _config
+      ) do
     ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, metadata)
 
     exception = Exception.normalize(kind, reason, stacktrace)
