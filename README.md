@@ -35,7 +35,6 @@ end
 If you want to use Telemetry handler, make sure you add the following lines to your application start:
 
 ```elixir
-OpenTelemetry.register_application_tracer(:my_telemetry_api)
 OpentelemetryTesla.setup()
 ```
 
