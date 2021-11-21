@@ -7,7 +7,6 @@ defmodule OpentelemetryTesla do
   ## Usage
   In your application start:
       def start(_type, _args) do
-        OpenTelemetry.register_application_tracer(:my_telemetry_api)
         OpentelemetryTesla.setup()
         children = [
           {Phoenix.PubSub, name: MyApp.PubSub},
@@ -25,9 +24,6 @@ defmodule OpentelemetryTesla do
   """
   @spec setup() :: :ok
   def setup() do
-    {:ok, otel_tracer_vsn} = :application.get_key(@tracer_id, :vsn)
-    OpenTelemetry.register_tracer(@tracer_id, otel_tracer_vsn)
-
     attach_request_start_handler()
     attach_request_stop_handler()
     attach_request_exception_handler()
