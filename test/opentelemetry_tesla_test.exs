@@ -325,5 +325,34 @@ defmodule OpentelemetryTeslaTest do
                     )}
   end
 
+  test "Appends the given `span_name` option to span's name", %{
+    bypass: bypass
+  } do
+    defmodule TestClient do
+      def get(client) do
+        Tesla.get(client, "/users/")
+      end
+
+      def client(url) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.Telemetry,
+          {Tesla.Middleware.OpenTelemetry, span_name: "external-service"}
+        ]
+
+        Tesla.client(middleware)
+      end
+    end
+
+    Bypass.expect_once(bypass, "GET", "/users", fn conn ->
+      Plug.Conn.resp(conn, 204, "")
+    end)
+
+    client = TestClient.client(endpoint_url(bypass.port))
+    TestClient.get(client)
+
+    assert_receive {:span, span(name: "HTTP GET - external-service", attributes: _)}
+  end
+
   defp endpoint_url(port), do: "http://localhost:#{port}/"
 end
