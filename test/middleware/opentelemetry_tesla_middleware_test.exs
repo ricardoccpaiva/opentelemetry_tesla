@@ -18,9 +18,18 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
              Tesla.Middleware.OpenTelemetry.call(
                %Tesla.Env{url: ""},
                [],
-               "http://example.com"
+               []
              )
 
     assert is_binary(traceparent)
+  end
+
+  test "Puts the `span_name` option into Tesla.Env's `opts`" do
+    assert {:ok, env} =
+             Tesla.Middleware.OpenTelemetry.call(%Tesla.Env{url: ""}, [],
+               span_name: "external-service"
+             )
+
+    assert env.opts[:span_name] == "external-service"
   end
 end

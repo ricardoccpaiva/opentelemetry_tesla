@@ -57,12 +57,15 @@ defmodule OpentelemetryTesla do
     )
   end
 
-  def handle_start(_event, _measurements, %{env: %Tesla.Env{method: method}} = metadata, _config) do
-    http_method = http_method(method)
-
+  def handle_start(
+        _event,
+        _measurements,
+        %{env: %Tesla.Env{} = env} = metadata,
+        _config
+      ) do
     OpentelemetryTelemetry.start_telemetry_span(
       @tracer_id,
-      "HTTP #{http_method}",
+      span_name(env),
       metadata,
       %{kind: :client}
     )
@@ -86,10 +89,11 @@ defmodule OpentelemetryTesla do
     end_span(metadata)
   end
 
-  defp end_span(metadata, status \\ :ok) do
+  defp end_span(%{env: %Tesla.Env{} = env} = metadata, status \\ :ok) do
     span_attrs = build_attrs(metadata)
     ctx = OpentelemetryTelemetry.set_current_telemetry_span(@tracer_id, metadata)
 
+    OpenTelemetry.Span.update_name(ctx, span_name(env))
     OpenTelemetry.Span.set_attributes(ctx, span_attrs)
 
     if status == :error do
@@ -146,6 +150,17 @@ defmodule OpentelemetryTesla do
       {_key, content_length} ->
         :lists.append(attrs, "http.response_content_length": content_length)
     end
+  end
+
+  defp span_name(env) do
+    http_method = http_method(env.method)
+
+    span_name =
+      if env.opts[:span_name],
+        do: " - #{to_string(env.opts[:span_name])}",
+        else: ""
+
+    "HTTP #{http_method}#{span_name}"
   end
 
   defp http_method(method) do
