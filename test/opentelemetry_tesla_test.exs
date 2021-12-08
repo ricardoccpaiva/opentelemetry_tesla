@@ -354,5 +354,37 @@ defmodule OpentelemetryTeslaTest do
     assert_receive {:span, span(name: "HTTP GET - external-service", attributes: _)}
   end
 
+  test "Configures ok-ish/expected HTTP response statuses so spans are not flagged as errors", %{
+    bypass: bypass
+  } do
+    defmodule TestClient do
+      def get(client) do
+        Tesla.get(client, "/users/")
+      end
+
+      def client(url) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.Telemetry,
+          {Tesla.Middleware.OpenTelemetry,
+           span_name: "external-service", non_error_statuses: [404]}
+        ]
+
+        Tesla.client(middleware)
+      end
+    end
+
+    Bypass.expect_once(bypass, "GET", "/users", fn conn ->
+      Plug.Conn.resp(conn, 404, "")
+    end)
+
+    client = TestClient.client(endpoint_url(bypass.port))
+    TestClient.get(client)
+
+    assert_receive {:span, span(status: status)}
+
+    refute status == OpenTelemetry.status(:error, "")
+  end
+
   defp endpoint_url(port), do: "http://localhost:#{port}/"
 end

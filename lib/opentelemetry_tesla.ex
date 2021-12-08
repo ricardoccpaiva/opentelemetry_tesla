@@ -71,9 +71,20 @@ defmodule OpentelemetryTesla do
     )
   end
 
-  def handle_stop(_event, _measurements, %{env: %Tesla.Env{status: status}} = metadata, _config)
+  def handle_stop(
+        _event,
+        _measurements,
+        %{env: %Tesla.Env{status: status, opts: opts}} = metadata,
+        _config
+      )
       when status > 400 do
-    end_span(metadata, :error)
+    non_error_statuses = Keyword.get(opts, :non_error_statuses, [])
+
+    if status in non_error_statuses do
+      end_span(metadata, :ok)
+    else
+      end_span(metadata, :error)
+    end
   end
 
   def handle_stop(

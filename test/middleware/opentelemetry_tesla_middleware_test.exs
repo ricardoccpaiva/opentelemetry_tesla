@@ -32,4 +32,13 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
 
     assert env.opts[:span_name] == "external-service"
   end
+
+  test "Puts the `non_error_statuses` option into Tesla.Env's `opts`" do
+    assert {:ok, env} =
+             Tesla.Middleware.OpenTelemetry.call(%Tesla.Env{url: ""}, [],
+               non_error_statuses: [404]
+             )
+
+    assert env.opts[:non_error_statuses] == [404]
+  end
 end
