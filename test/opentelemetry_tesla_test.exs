@@ -51,18 +51,16 @@ defmodule OpentelemetryTeslaTest do
 
     TestClient.get(client)
 
-    assert_receive {:span,
-                    span(
-                      name: "HTTP GET",
-                      attributes: [
-                        "http.method": "GET",
-                        "http.url": url,
-                        "http.target": "/users/",
-                        "http.host": "localhost",
-                        "http.scheme": "http",
-                        "http.status_code": 204
-                      ]
-                    )}
+    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
+
+    assert %{
+             "http.method": "GET",
+             "http.url": url,
+             "http.target": "/users/",
+             "http.host": "localhost",
+             "http.scheme": "http",
+             "http.status_code": 204
+           } = :otel_attributes.map(attributes)
 
     assert url == "http://localhost:#{bypass.port}/users/"
   end
@@ -159,7 +157,9 @@ defmodule OpentelemetryTeslaTest do
 
     assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
 
-    assert attributes[:"http.url"] ==
+    mapped_attributes = :otel_attributes.map(attributes)
+
+    assert mapped_attributes[:"http.url"] ==
              "http://localhost:#{bypass.port}/users/2?token=some-token&array%5B%5D=foo&array%5B%5D=bar"
   end
 
@@ -194,7 +194,9 @@ defmodule OpentelemetryTeslaTest do
 
     assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
 
-    assert attributes[:"http.url"] ==
+    mapped_attributes = :otel_attributes.map(attributes)
+
+    assert mapped_attributes[:"http.url"] ==
              "http://localhost:#{bypass.port}/users/2"
   end
 
@@ -226,8 +228,7 @@ defmodule OpentelemetryTeslaTest do
     TestClient.get(client, "2")
 
     assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
-
-    assert attributes[:"http.target"] == "/users/2"
+    assert %{"http.target": "/users/2"} = :otel_attributes.map(attributes)
   end
 
   test "Records http.response_content_length param into the span", %{bypass: bypass} do
@@ -261,7 +262,9 @@ defmodule OpentelemetryTeslaTest do
 
     assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
 
-    {response_size, _} = Integer.parse(attributes[:"http.response_content_length"])
+    mapped_attributes = :otel_attributes.map(attributes)
+
+    {response_size, _} = Integer.parse(mapped_attributes[:"http.response_content_length"])
     assert response_size == byte_size(response)
   end
 
@@ -308,21 +311,24 @@ defmodule OpentelemetryTeslaTest do
     assert_receive {:span,
                     span(
                       name: "HTTP GET",
-                      attributes: _list,
                       kind: :client,
-                      events: [
-                        event(
-                          name: "exception",
-                          attributes: [
-                            {"exception.type", "Elixir.ErlangError"},
-                            {"exception.message", "Erlang error: :timeout_value"},
-                            {"exception.stacktrace", _stacktrace}
-                            | %{}
-                          ]
-                        )
-                      ],
+                      events: events,
+                      attributes: _attributes,
                       status: ^expected_status
                     )}
+
+    [
+      event(
+        name: "exception",
+        attributes: event_attributes
+      )
+    ] = :otel_events.list(events)
+
+    assert %{
+             "exception.type" => "Elixir.ErlangError",
+             "exception.message" => "Erlang error: :timeout_value",
+             "exception.stacktrace" => _stacktrace
+           } = :otel_attributes.map(event_attributes)
   end
 
   defp endpoint_url(port), do: "http://localhost:#{port}/"
