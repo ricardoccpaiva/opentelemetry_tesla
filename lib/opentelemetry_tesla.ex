@@ -126,14 +126,14 @@ defmodule OpentelemetryTesla do
     url = Tesla.build_url(url, query)
     uri = URI.parse(url)
 
-    attrs = [
+    attrs = %{
       "http.method": http_method(method),
       "http.url": url,
       "http.target": uri.path,
       "http.host": uri.host,
       "http.scheme": uri.scheme,
       "http.status_code": status_code
-    ]
+    }
 
     maybe_append_content_length(attrs, headers)
   end
@@ -144,7 +144,7 @@ defmodule OpentelemetryTesla do
         attrs
 
       {_key, content_length} ->
-        :lists.append(attrs, "http.response_content_length": content_length)
+        Map.put(attrs, :"http.response_content_length", content_length)
     end
   end
 
