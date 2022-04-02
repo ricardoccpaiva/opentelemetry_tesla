@@ -25,6 +25,40 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
     {:ok, bypass: bypass}
   end
 
+  test "it records a generic span name if opentelemetry middleware is configured before path params middleware",
+       %{
+         bypass: bypass
+       } do
+    defmodule TestClient do
+      def get(client) do
+        params = [id: '3']
+
+        Tesla.get(client, "/users/:id", opts: [path_params: params])
+      end
+
+      def client(url) do
+        middleware = [
+          {Tesla.Middleware.BaseUrl, url},
+          Tesla.Middleware.OpenTelemetry,
+          Tesla.Middleware.PathParams
+        ]
+
+        Tesla.client(middleware)
+      end
+    end
+
+    Bypass.expect_once(bypass, "GET", "/users/3", fn conn ->
+      Plug.Conn.resp(conn, 204, "")
+    end)
+
+    bypass.port
+    |> endpoint_url()
+    |> TestClient.client()
+    |> TestClient.get()
+
+    assert_receive {:span, span(name: "GET /users/:id", attributes: attributes)}
+  end
+
   test "Records spans for Tesla HTTP client", %{bypass: bypass} do
     defmodule TestClient do
       def get(client) do
@@ -45,22 +79,12 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
       Plug.Conn.resp(conn, 204, "")
     end)
 
-    client = TestClient.client(endpoint_url(bypass.port))
+    bypass.port
+    |> endpoint_url()
+    |> TestClient.client()
+    |> TestClient.get()
 
-    TestClient.get(client)
-
-    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
-
-    assert %{
-             "http.method": "GET",
-             "http.url": url,
-             "http.target": "/users/",
-             "http.host": "localhost",
-             "http.scheme": "http",
-             "http.status_code": 204
-           } = :otel_attributes.map(attributes)
-
-    assert url == "http://localhost:#{bypass.port}/users/"
+    assert_receive {:span, span(name: "HTTP GET", attributes: _attributes)}
   end
 
   test "Marks Span status as :error when HTTP request fails", %{bypass: bypass} do
@@ -83,9 +107,10 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
       Plug.Conn.resp(conn, 500, "")
     end)
 
-    client = TestClient.client(endpoint_url(bypass.port))
-
-    TestClient.get(client)
+    bypass.port
+    |> endpoint_url()
+    |> TestClient.client()
+    |> TestClient.get()
 
     assert_receive {:span, span(status: {:status, :error, ""})}
   end
@@ -119,9 +144,10 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
       |> Plug.Conn.resp(301, "")
     end)
 
-    client = TestClient.client(endpoint_url(bypass.port))
-
-    TestClient.get(client)
+    bypass.port
+    |> endpoint_url()
+    |> TestClient.client()
+    |> TestClient.get()
 
     assert_receive {:span, span(status: {:status, :error, ""})}
   end
@@ -149,11 +175,12 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
       Plug.Conn.resp(conn, 204, "")
     end)
 
-    client = TestClient.client(endpoint_url(bypass.port))
+    bypass.port
+    |> endpoint_url()
+    |> TestClient.client()
+    |> TestClient.get("2")
 
-    TestClient.get(client, "2")
-
-    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
+    assert_receive {:span, span(name: _name, attributes: attributes)}
 
     mapped_attributes = :otel_attributes.map(attributes)
 
@@ -186,11 +213,12 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
       Plug.Conn.resp(conn, 204, "")
     end)
 
-    client = TestClient.client(endpoint_url(bypass.port))
+    bypass.port
+    |> endpoint_url()
+    |> TestClient.client()
+    |> TestClient.get("2")
 
-    TestClient.get(client, "2")
-
-    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
+    assert_receive {:span, span(name: _name, attributes: attributes)}
 
     mapped_attributes = :otel_attributes.map(attributes)
 
@@ -221,11 +249,12 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
       Plug.Conn.resp(conn, 204, "")
     end)
 
-    client = TestClient.client(endpoint_url(bypass.port))
+    bypass.port
+    |> endpoint_url()
+    |> TestClient.client()
+    |> TestClient.get("2")
 
-    TestClient.get(client, "2")
-
-    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
+    assert_receive {:span, span(name: _name, attributes: attributes)}
     assert %{"http.target": "/users/2"} = :otel_attributes.map(attributes)
   end
 
@@ -254,11 +283,12 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
       Plug.Conn.resp(conn, 200, response)
     end)
 
-    client = TestClient.client(endpoint_url(bypass.port))
+    bypass.port
+    |> endpoint_url()
+    |> TestClient.client()
+    |> TestClient.get("2")
 
-    TestClient.get(client, "2")
-
-    assert_receive {:span, span(name: "HTTP GET", attributes: attributes)}
+    assert_receive {:span, span(name: _name, attributes: attributes)}
 
     mapped_attributes = :otel_attributes.map(attributes)
 

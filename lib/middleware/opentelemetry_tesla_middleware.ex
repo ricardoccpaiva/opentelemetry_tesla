@@ -3,12 +3,21 @@ defmodule Tesla.Middleware.OpenTelemetry do
   @behaviour Tesla.Middleware
 
   def call(env, next, _options) do
-    OpenTelemetry.Tracer.with_span "HTTP #{http_method(env.method)}", %{kind: :client} do
+    span_name = get_span_name(env)
+
+    OpenTelemetry.Tracer.with_span span_name, %{kind: :client} do
       env
       |> Tesla.put_headers(:otel_propagator_text_map.inject([]))
       |> Tesla.run(next)
       |> set_span_attributes()
       |> handle_result()
+    end
+  end
+
+  defp get_span_name(env) do
+    case env.opts[:path_params] do
+      nil -> "HTTP #{http_method(env.method)}"
+      _ -> "#{http_method(env.method)} #{URI.parse(env.url).path}"
     end
   end
 
