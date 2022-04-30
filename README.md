@@ -22,7 +22,7 @@ Whilst using this middleware is as simple as adding it to your Tesla middlewares
 
 The is crucial to correctly get the parameterized version of the URL, something like `/api/users/:id` instead of `/api/users/3`. 
 
-`OpenTelemetry` comes **first**, **PathParams** (if you're using it) comes after.
+`OpenTelemetry` comes **first**, `PathParams` (if you're using it) comes after.
 
 ```elixir
 Tesla.Middleware.OpenTelemetry
