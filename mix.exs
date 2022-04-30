@@ -4,7 +4,7 @@ defmodule OpentelemetryTesla.MixProject do
   def project do
     [
       app: :opentelemetry_tesla,
-      version: "1.3.2",
+      version: "2.0.0",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -44,13 +44,13 @@ defmodule OpentelemetryTesla.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:telemetry, "~> 0.4 or ~> 1.0"},
       {:opentelemetry, "~> 1.0.0", only: :test},
       {:opentelemetry_api, "~> 1.0.0"},
       {:opentelemetry_telemetry, "~> 1.0.0"},
       {:tesla, "~> 1.4"},
       {:ex_doc, "~> 0.24", only: :dev, runtime: false},
-      {:bypass, "~> 2.1", only: :test}
+      {:bypass, "~> 2.1", only: :test},
+      {:jason, "~> 1.3", only: :test}
     ]
   end
 end
