@@ -56,7 +56,7 @@ defmodule Tesla.Middleware.OpenTelemetryTest do
     |> TestClient.client()
     |> TestClient.get()
 
-    assert_receive {:span, span(name: "GET /users/:id", attributes: attributes)}
+    assert_receive {:span, span(name: "/users/:id", attributes: _attributes)}
   end
 
   test "Records spans for Tesla HTTP client", %{bypass: bypass} do
