@@ -17,7 +17,7 @@ defmodule Tesla.Middleware.OpenTelemetry do
   defp get_span_name(env) do
     case env.opts[:path_params] do
       nil -> "HTTP #{http_method(env.method)}"
-      _ -> "#{http_method(env.method)} #{URI.parse(env.url).path}"
+      _ -> URI.parse(env.url).path
     end
   end
 
