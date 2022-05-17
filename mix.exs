@@ -4,7 +4,7 @@ defmodule OpentelemetryTesla.MixProject do
   def project do
     [
       app: :opentelemetry_tesla,
-      version: "2.0.0",
+      version: "2.0.1",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -22,7 +22,7 @@ defmodule OpentelemetryTesla.MixProject do
   end
 
   defp description() do
-    "Telemetry handler that creates OpenTelemetry spans from Tesla HTTP client events."
+    "Tesla middleware that creates OpenTelemetry spans and injects tracing headers into HTTP requests for Tesla clients."
   end
 
   defp package do
