@@ -124,7 +124,7 @@ defmodule OpentelemetryTesla do
 
     exception = Exception.normalize(kind, reason, stacktrace)
 
-    Span.record_exception(ctx, exception, stacktrace, %{})
+    Span.record_exception(ctx, exception, stacktrace, [])
     Span.set_status(ctx, OpenTelemetry.status(:error, ""))
     OpentelemetryTelemetry.end_telemetry_span(@tracer_id, metadata)
   end
