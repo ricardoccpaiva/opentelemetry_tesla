@@ -50,7 +50,7 @@ defmodule OpentelemetryTesla.MixProject do
     [
       {:telemetry, "~> 1.0"},
       {:tls_certificate_check, "~> 1.15", only: [:dev, :test]},
-      {:opentelemetry_api, "~> 1.1.0"},
+      {:opentelemetry_api, "~> 1.2.0"},
       {:opentelemetry, "~> 1.1.0", only: [:dev, :test]},
       {:opentelemetry_exporter, "~> 1.1.0", only: [:dev, :test]},
       {:opentelemetry_telemetry, "~> 1.0.0"},
